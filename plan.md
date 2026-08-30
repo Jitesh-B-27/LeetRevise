@@ -514,8 +514,8 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 ### Day 1 — Scaffold and contracts
 
 - [x] Scaffold Next.js, TypeScript, Tailwind, and linting.
-- [ ] Configure the Vitest test runner and add an initial smoke test.
-- [ ] Add folder boundaries and environment validation.
+- [x] Configure the Vitest test runner and add an initial smoke test.
+- [x] Add folder boundaries and environment validation.
 - [ ] Define domain types and Zod schemas.
 - [ ] Add `.env.example` and local setup instructions.
 - [ ] Confirm production-compatible package versions.
@@ -842,10 +842,13 @@ Add new decisions here rather than relying only on chat history.
 - `architecture.md` and `plan.md` define the project and execution plan.
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, and ESLint are scaffolded.
 - The root page renders a minimal LeetRevise introduction.
-- `npm run lint`, `npm run typecheck`, and `npm run build` pass.
-- Database migrations, authentication, extension, domain contracts, and automated tests have not been implemented yet.
+- Vitest, Testing Library, and jsdom are configured; the landing-page smoke test passes.
+- Domain, service, authentication, component, and environment module boundaries are documented.
+- Zod validates the complete application environment lazily and reports invalid variables by name; `.env.example` documents required configuration.
+- `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
+- Database migrations, authentication, extension, and domain contracts have not been implemented yet.
 
-**Next action:** Configure Vitest and add one initial application smoke test.
+**Next action:** Define the shared submission, AI-note, difficulty, and revision domain types and Zod schemas.
 
 **Active blockers:** None.
 
