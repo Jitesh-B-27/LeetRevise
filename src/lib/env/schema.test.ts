@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnvironment } from "./schema";
+import { parseEnvironment, parsePublicSupabaseEnvironment } from "./schema";
 
 const validEnvironment = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -24,5 +24,32 @@ describe("parseEnvironment", () => {
         NEXT_PUBLIC_APP_URL: "not-a-url",
       }),
     ).toThrow(/GEMINI_API_KEY, NEXT_PUBLIC_APP_URL/);
+  });
+});
+
+describe("parsePublicSupabaseEnvironment", () => {
+  it("does not require deferred Gemini configuration", () => {
+    expect(
+      parsePublicSupabaseEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY:
+          validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    });
+  });
+
+  it("names invalid Supabase variables", () => {
+    expect(() =>
+      parsePublicSupabaseEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: "invalid",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: undefined,
+      }),
+    ).toThrow(
+      /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY/,
+    );
   });
 });

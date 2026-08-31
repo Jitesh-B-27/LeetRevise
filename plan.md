@@ -516,21 +516,21 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 - [x] Scaffold Next.js, TypeScript, Tailwind, and linting.
 - [x] Configure the Vitest test runner and add an initial smoke test.
 - [x] Add folder boundaries and environment validation.
-- [ ] Define domain types and Zod schemas.
-- [ ] Add `.env.example` and local setup instructions.
-- [ ] Confirm production-compatible package versions.
+- [x] Define the LeetCode difficulty, single-submission, and bulk-ingestion domain contracts and Zod schemas. Business-domain contracts remain deferred until their corresponding features are developed.
+- [x] Add `.env.example` and local setup instructions.
+- [x] Confirm production-compatible package versions.
 
 **Exit condition:** Application builds, runs, and tests execute.
 
-### Day 2 — Supabase schema and auth
+### Day 2 — Ingestion persistence foundation
 
-- [ ] Create migrations for submissions, revision attempts, and ingestion tokens.
-- [ ] Add indexes, triggers/timestamps, and RLS policies.
-- [ ] Implement Supabase server/browser clients.
-- [ ] Implement magic-link login and protected routes.
-- [ ] Test two-user data isolation manually or with SQL tests.
+- [x] Create the `user_submissions` migration for one newest submission per user/problem.
+- [x] Add ingestion constraints, latest-timestamp protection, indexes, and owner-only RLS policies.
+- [x] Implement minimal Supabase server/browser clients without introducing authentication UI.
+- [ ] Apply the migration to a Supabase project and test two-user data isolation.
+- [ ] Design authentication and ingestion-token persistence as separate approved slices.
 
-**Exit condition:** A user can log in and reach a protected empty dashboard.
+**Exit condition:** The migration is applied to Supabase, owner isolation is verified, and the application has minimal browser/server database clients.
 
 ### Day 3 — Submission API and token setup
 
@@ -826,6 +826,12 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-08-30 | Manual capture is an acceptable fallback but must still use the real API and persistence flow. | Protects the core product from LeetCode integration instability. |
 | 2026-08-30 | Add revision-attempt persistence and nullable pattern classification to the implementation plan. | Required for daily exclusion, hint state, and delayed/failed AI processing. |
 | 2026-08-30 | Prefer simple synchronous/bounded AI processing or a platform-supported background mechanism over custom queue infrastructure. | Appropriate reliability/complexity tradeoff for a personal MVP. |
+| 2026-08-31 | Limit the initial domain-contract slice to LeetCode difficulty and single/bulk ingestion data. | Keeps Day 1 focused on the external ingestion boundary while allowing AI, revision, hint, and other business contracts to be added with their features. |
+| 2026-08-31 | Keep the verified dependency versions and require Node.js 22 or newer for local development. | The installed Next.js, React, TypeScript, Tailwind, Zod, ESLint, Vitest, jsdom, and official Supabase clients are compatible; the current Supabase packages establish the strictest runtime requirement. |
+| 2026-08-31 | Treat Gemini configuration and AI functionality as deferred and unnecessary for the ingestion MVP. | Submission ingestion must be independently developable and verifiable before AI behavior is introduced. |
+| 2026-08-31 | Store one newest submission row per `(user_id, problem_slug)` and remove `solved_count`. | The ingestion MVP needs revision-relevant latest state, not historical accepted-submission events; full history storage is deferred to V2. |
+| 2026-08-31 | Collapse bulk duplicates to the newest timestamp and prevent older or equal submissions from replacing stored state. | Makes imports and retries deterministic while protecting the revision-relevant solve timestamp. |
+| 2026-08-31 | Keep topics, revision, and AI fields out of the initial ingestion table. | Their persistence contracts will be designed alongside their business features. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -833,9 +839,9 @@ Add new decisions here rather than relying only on chat history.
 
 ## 20. Current Status
 
-**Last updated:** 2026-08-30
+**Last updated:** 2026-08-31
 
-**Current milestone:** Day 1 — scaffold and contracts.
+**Current milestone:** Day 2 — ingestion persistence foundation implemented locally; remote migration and two-user RLS verification remain.
 
 **Repository state:**
 
@@ -845,10 +851,18 @@ Add new decisions here rather than relying only on chat history.
 - Vitest, Testing Library, and jsdom are configured; the landing-page smoke test passes.
 - Domain, service, authentication, component, and environment module boundaries are documented.
 - Zod validates the complete application environment lazily and reports invalid variables by name; `.env.example` documents required configuration.
+- Pure Zod contracts now validate LeetCode difficulty and single/bulk submission ingestion, including required content, URL, performance measurements, and the actual submission timestamp.
+- The bulk contract reuses the single-submission schema and intentionally has no domain-level history-size limit.
+- The root README documents fresh-clone setup, environment-variable exposure, repository boundaries, and the developer quality workflow.
+- Gemini and AI functionality are documented as deferred and not required for the ingestion MVP.
+- The current dependency set is compatible on the documented Node.js 22+ baseline; no existing dependency upgrades were required.
+- The ingestion migration stores one newest submission per user/problem, has no `solved_count`, and prevents older or equal timestamps from overwriting newer state.
+- Owner-only RLS policies and minimal cookie-aware Supabase browser/server clients are implemented.
+- README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
-- Database migrations, authentication, extension, and domain contracts have not been implemented yet.
+- AI-note, pattern, revision/hint, PDS, persistence services, APIs, authentication UI, and extension behavior have not been implemented yet.
 
-**Next action:** Define the shared submission, AI-note, difficulty, and revision domain types and Zod schemas.
+**Next action:** Create/link a Supabase project, apply the ingestion migration, and verify two-user RLS isolation before designing the timestamp-aware persistence service.
 
 **Active blockers:** None.
 

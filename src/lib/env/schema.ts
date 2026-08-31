@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const publicSupabaseEnvironmentSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+});
+
 export const environmentSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
@@ -11,6 +16,16 @@ export const environmentSchema = z.object({
 });
 
 export type AppEnvironment = z.infer<typeof environmentSchema>;
+export type PublicSupabaseEnvironment = z.infer<
+  typeof publicSupabaseEnvironmentSchema
+>;
+
+function formatInvalidVariables(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => String(issue.path[0]))
+    .filter((name, index, names) => names.indexOf(name) === index)
+    .join(", ");
+}
 
 export function parseEnvironment(
   source: Record<string, string | undefined>,
@@ -18,12 +33,23 @@ export function parseEnvironment(
   const result = environmentSchema.safeParse(source);
 
   if (!result.success) {
-    const variables = result.error.issues
-      .map((issue) => String(issue.path[0]))
-      .filter((name, index, names) => names.indexOf(name) === index)
-      .join(", ");
+    throw new Error(
+      `Invalid environment variables: ${formatInvalidVariables(result.error)}`,
+    );
+  }
 
-    throw new Error(`Invalid environment variables: ${variables}`);
+  return result.data;
+}
+
+export function parsePublicSupabaseEnvironment(
+  source: Record<string, string | undefined>,
+): PublicSupabaseEnvironment {
+  const result = publicSupabaseEnvironmentSchema.safeParse(source);
+
+  if (!result.success) {
+    throw new Error(
+      `Invalid Supabase environment variables: ${formatInvalidVariables(result.error)}`,
+    );
   }
 
   return result.data;
