@@ -140,7 +140,7 @@ Only implement these after the complete core flow works:
 3. It collects available problem metadata, code, language, runtime, memory, and URL.
 4. It sends the payload to `POST /api/submissions` with the bearer token.
 5. The server authenticates the token and validates the payload.
-6. The server inserts a new problem or updates an existing problem as a re-solve.
+6. The server inserts a new problem, updates it only for a newer accepted submission, or skips equal/older data.
 7. AI notes are generated and persisted. For V1 this may run synchronously with a timeout or through a simple post-response mechanism; submission persistence must succeed independently.
 8. Pattern information becomes available to the dashboard.
 9. Extension displays success or a retryable error.
@@ -181,7 +181,7 @@ The manual path is required if automatic interception cannot be completed reliab
 1. User initiates import from the extension.
 2. Extension collects accessible historical submissions or accepts manually assembled items.
 3. Items are sent in batches to `POST /api/submissions/bulk`.
-4. Existing problems are skipped during import rather than counted as new re-solves.
+4. Existing problems are updated only when the collapsed bulk item is newer; equal or older items are skipped.
 5. The popup displays imported, skipped, and failed counts.
 
 ---
@@ -267,8 +267,7 @@ The migrations are the final authority once created. The minimum intended model 
 - `runtime_ms`: nullable integer.
 - `memory_mb`: nullable numeric.
 - `ai_notes`: nullable JSON.
-- `last_solved_at`: timestamp.
-- `solved_count`: positive integer.
+- `submitted_at`: latest known LeetCode accepted-submission timestamp and the revision-relevant solve time.
 - `created_at` and `updated_at`: timestamps.
 - Unique constraint on `(user_id, problem_id)`.
 
@@ -332,7 +331,8 @@ All errors use `{ "error": string }` with an appropriate HTTP status.
 
 - `POST /api/submissions`: create or update one accepted submission.
   - New item returns `201`.
-  - Re-solve returns `200` and increments `solved_count`.
+  - A newer submission returns `200` and updates the same row.
+  - An equal or older submission returns `200` without modifying stored state.
   - Save must succeed even if AI generation fails.
 - `POST /api/submissions/bulk`: validate and import a batch.
   - Existing problems are skipped.
@@ -481,7 +481,7 @@ Testing is risk-based to fit the two-week deadline.
 - PDS calculation across all difficulties and important edge cases.
 - Submission payload validation.
 - AI-note response parsing and fallback.
-- Idempotent new submission versus re-solve behavior.
+- Atomic created, newer-updated, and equal/older-skipped submission behavior.
 - Daily feed excludes completed revisions and returns at most three.
 - Extension payload parser with saved/mock LeetCode fixtures.
 - One Playwright flow: authenticate using test setup, seed/capture submission, see dashboard card, open workspace, request Level 1 hint, complete revision.
@@ -534,9 +534,9 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 ### Day 3 — Submission API and token setup
 
 - [x] Implement token generation, hashing, and verification.
-- [ ] Implement `POST /api/submissions`.
-- [ ] Implement idempotent insert/re-solve behavior.
-- [ ] Add focused API/service tests.
+- [x] Implement `POST /api/submissions`.
+- [x] Implement atomic insert/newer-update/stale-skip behavior.
+- [x] Add focused API/service tests.
 - [ ] Add settings/setup UI for copying a generated token.
 
 **Exit condition:** An authenticated test request stores a submission.
@@ -606,7 +606,7 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 - [ ] Implement the selected automatic capture method.
 - [ ] Implement manual save fallback regardless of automatic success.
 - [ ] Extract available metadata and normalize the payload.
-- [ ] Add success, duplicate/re-solve, and error feedback.
+- [ ] Add created, updated, skipped, and error feedback.
 - [ ] Test with mocked fixtures and one real problem.
 
 **Exit condition:** A real LeetCode submission can reach LeetRevise through at least one reliable extension path.
@@ -832,6 +832,7 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-08-31 | Keep topics, revision, and AI fields out of the initial ingestion table. | Their persistence contracts will be designed alongside their business features. |
 | 2026-09-01 | Expose only ingestion-token metadata columns to authenticated owners; keep `token_hash` privileged. | Token hashes have no UI value and should remain behind the server-only boundary even though they are not raw secrets. |
 | 2026-09-01 | Use a server-only service-role client for token creation and extension verification. | Extension ownership must be derived from a verified token and never from caller-controlled input. |
+| 2026-09-05 | Keep the atomic ingestion function limited to insert-if-absent, update-if-newer, and skip-otherwise. | Validation, bearer authentication, and future bulk grouping remain application responsibilities while the database safely resolves write races. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -839,9 +840,9 @@ Add new decisions here rather than relying only on chat history.
 
 ## 20. Current Status
 
-**Last updated:** 2026-08-31
+**Last updated:** 2026-09-05
 
-**Current milestone:** Ingestion backend Subtask 1 complete locally — token and privileged-access foundation. The new token migration still needs to be pushed to Supabase.
+**Current milestone:** Ingestion backend Subtask 2 complete locally — atomic single-submission persistence and bearer-authenticated API. Pending migrations still need to be pushed to Supabase.
 
 **Repository state:**
 
@@ -861,17 +862,19 @@ Add new decisions here rather than relying only on chat history.
 - Ingestion tokens use 32 random bytes, an `lr_ingest_` prefix, SHA-256-only persistence, metadata-only owner visibility, revocation checks, and successful-use timestamps.
 - A server-only privileged Supabase client isolates the service-role key; extension verification resolves ownership without accepting a caller-provided user ID.
 - `POST /api/tokens` and `GET /api/extension/verify` implement the web-session and bearer-token authorization boundaries.
+- The atomic database function safely returns `created`, `updated`, or `skipped` under concurrent writes without absorbing validation, authentication, or bulk behavior.
+- `POST /api/submissions` validates the existing domain contract, derives ownership from the bearer token, and delegates all persistence to the submission service.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
 - AI-note, pattern, revision/hint, PDS, persistence services, APIs, authentication UI, and extension behavior have not been implemented yet.
 
-**Next action:** After primary-engineer approval, implement Subtask 2: the narrowly scoped atomic newest-submission database function, timestamp-aware persistence service, and bearer-authenticated `POST /api/submissions` route.
+**Next action:** After primary-engineer approval, implement Subtask 3: partial-valid bulk ingestion, duplicate collapse to the newest item per problem, reuse of the single-submission service, and aggregate API results.
 
 **Active blockers:** None.
 
 **Known implementation issues:** PowerShell blocks the `npm.ps1` shim on this machine; use `npm.cmd` for project commands.
 
-**Pending deployment action:** Push `20260901100000_create_ingest_tokens.sql` to the linked Supabase project before exercising token APIs against the hosted database.
+**Pending deployment action:** Push all pending migrations, including `20260901100000_create_ingest_tokens.sql` and `20260905100000_create_ingest_latest_submission_function.sql`, before exercising ingestion APIs against the hosted database.
 
 ---
 

@@ -179,8 +179,20 @@ Authorization: Bearer lr_ingest_...
 
 Successful verification returns `{ "valid": true }` and updates `last_used_at`. Missing, malformed, unknown, and revoked tokens return `401`. The resolved owner ID remains server-side for subsequent ingestion and is never accepted from the extension request.
 
+## Single-submission API
+
+`POST /api/submissions` accepts the existing single-submission JSON contract and requires an active ingestion bearer token. Ownership is always derived from that token; a payload containing `userId` is rejected.
+
+The endpoint atomically preserves one newest submission per user/problem:
+
+- A missing problem is inserted and returns `201 { "status": "created" }`.
+- A strictly newer `submittedAt` replaces stored state and returns `200 { "status": "updated" }`.
+- An equal or older submission leaves stored state unchanged and returns `200 { "status": "skipped" }`.
+
+The database function implements only this insert/update/skip invariant. Payload validation and bearer authentication remain in the application layer. Before using this endpoint against hosted Supabase, push all pending migrations with `npx.cmd supabase@latest db push`.
+
 ## Current boundaries
 
-The implemented domain layer validates LeetCode difficulty and single/bulk ingestion data. The database foundation stores one newest submission per user/problem and rejects stale overwrites. It intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, API behavior, or extension behavior. Those contracts will be introduced alongside the business features that need them.
+The implemented domain layer validates LeetCode difficulty and single/bulk ingestion data. The database foundation and single-submission API store one newest submission per user/problem and reject stale overwrites. It intentionally does not yet contain bulk API behavior, AI notes, pattern classification, revision attempts, hints, PDS calculations, or extension behavior. Those contracts will be introduced alongside the business features that need them.
 
 Gemini and all AI functionality are deferred. They are not dependencies of the ingestion MVP, and no Gemini credentials are currently required to develop or verify the implemented scaffold and ingestion contracts.
