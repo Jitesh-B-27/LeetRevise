@@ -45,15 +45,14 @@ On Windows, this repository uses `npm.cmd` in examples because some PowerShell e
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe | Supabase project URL | Deferred until Supabase integration |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe | Supabase anonymous client key | Deferred until Supabase integration |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Privileged server-side Supabase access | Deferred until Supabase integration |
-| `INGEST_TOKEN_SECRET` | Server secret | Protects ingestion-token material | Deferred until token/API development |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server secret | Privileged token creation and extension authentication | Required for ingestion-token APIs |
 | `NEXT_PUBLIC_APP_URL` | Browser-safe | Canonical application URL | Deferred until URL-aware application flows |
 | `GEMINI_API_KEY` | Server secret | Authenticates Gemini requests | **Not required for the ingestion MVP; AI is deferred** |
 | `GEMINI_MODEL` | Server configuration | Selects a Gemini model | **Not required for the ingestion MVP; AI is deferred** |
 
 The current scaffold does not read these values during normal page rendering. Environment validation is lazy so configuration is checked when server-side integrations begin using it.
 
-Never expose `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_TOKEN_SECRET`, or `GEMINI_API_KEY` through a `NEXT_PUBLIC_*` variable or commit their values.
+Never expose `SUPABASE_SERVICE_ROLE_KEY` or `GEMINI_API_KEY` through a `NEXT_PUBLIC_*` variable or commit their values.
 
 ## Developer workflow
 
@@ -119,6 +118,8 @@ The ingestion migration is stored in `supabase/migrations/`. Keep database chang
 
 Do not use the service-role key in either public variable. The current browser and signed-in server clients do not require service-role access.
 
+The ingestion-token API does require `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`. Copy it only from the project's server-side API settings and never expose it to browser code.
+
 ### 2. Link this repository
 
 From the repository root, authenticate the Supabase CLI and link the hosted project:
@@ -151,6 +152,32 @@ npx.cmd supabase@latest db push
 In the Supabase dashboard, open **Table Editor** and confirm that `public.user_submissions` exists. Then open the database policy view and confirm that Row Level Security is enabled with owner-only select, insert, update, and delete policies.
 
 For a full local Supabase environment, Docker is required. After initializing the CLI configuration, `supabase start` starts the local stack and `supabase db reset` recreates the local database from every migration. A remote reset is destructive and is not part of this project's normal migration workflow.
+
+## Ingestion-token API
+
+`POST /api/tokens` requires an authenticated Supabase web session. It creates a token with at least 32 bytes of cryptographic randomness and returns the raw `lr_ingest_...` value only in that creation response. The database stores only its SHA-256 hash.
+
+```json
+{
+  "token": "lr_ingest_...",
+  "metadata": {
+    "id": "...",
+    "createdAt": "...",
+    "lastUsedAt": null,
+    "revokedAt": null
+  }
+}
+```
+
+Authenticated database access to `ingest_tokens` is restricted to the safe metadata columns shown above. It cannot select `token_hash`.
+
+`GET /api/extension/verify` accepts the raw token as a bearer credential:
+
+```http
+Authorization: Bearer lr_ingest_...
+```
+
+Successful verification returns `{ "valid": true }` and updates `last_used_at`. Missing, malformed, unknown, and revoked tokens return `401`. The resolved owner ID remains server-side for subsequent ingestion and is never accepted from the extension request.
 
 ## Current boundaries
 

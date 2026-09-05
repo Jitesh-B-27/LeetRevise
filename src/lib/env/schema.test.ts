@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseEnvironment, parsePublicSupabaseEnvironment } from "./schema";
+import {
+  parseEnvironment,
+  parsePrivilegedSupabaseEnvironment,
+  parsePublicSupabaseEnvironment,
+} from "./schema";
 
 const validEnvironment = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -7,7 +11,6 @@ const validEnvironment = {
   SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
   GEMINI_API_KEY: "gemini-key",
   GEMINI_MODEL: "gemini-flash",
-  INGEST_TOKEN_SECRET: "a-long-random-secret",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
 };
 
@@ -51,5 +54,20 @@ describe("parsePublicSupabaseEnvironment", () => {
     ).toThrow(
       /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY/,
     );
+  });
+});
+
+describe("parsePrivilegedSupabaseEnvironment", () => {
+  it("requires only the server-side Supabase credentials", () => {
+    expect(
+      parsePrivilegedSupabaseEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY:
+          validEnvironment.SUPABASE_SERVICE_ROLE_KEY,
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY: validEnvironment.SUPABASE_SERVICE_ROLE_KEY,
+    });
   });
 });

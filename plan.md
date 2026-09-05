@@ -299,13 +299,12 @@ This table determines whether a problem was revised today and stores hint progre
 
 - `id`: UUID primary key.
 - `user_id`.
-- `token_hash`: hash of the personal token; never store the raw token.
-- `name`: default such as `Chrome extension`.
-- `last_used_at`.
-- `revoked_at`.
+- `token_hash`: unique SHA-256 hash of the personal token; never store or expose the raw token after creation.
+- `last_used_at`, nullable.
+- `revoked_at`, nullable.
 - `created_at`.
 
-Only the generated raw token is shown to the user, once.
+Only the generated raw token is shown to the user once. Authenticated metadata reads expose `id`, `created_at`, `last_used_at`, and `revoked_at`, never `token_hash`.
 
 ### 6.5 Security rules
 
@@ -534,7 +533,7 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 
 ### Day 3 — Submission API and token setup
 
-- [ ] Implement token generation, hashing, and verification.
+- [x] Implement token generation, hashing, and verification.
 - [ ] Implement `POST /api/submissions`.
 - [ ] Implement idempotent insert/re-solve behavior.
 - [ ] Add focused API/service tests.
@@ -723,14 +722,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GEMINI_API_KEY=
 GEMINI_MODEL=
-INGEST_TOKEN_SECRET=
 NEXT_PUBLIC_APP_URL=
 ```
 
 Rules:
 
 - Validate required variables at startup/server use with clear messages.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, or `INGEST_TOKEN_SECRET` through `NEXT_PUBLIC_*` variables.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` or `GEMINI_API_KEY` through `NEXT_PUBLIC_*` variables.
 - Maintain `.env.example` with placeholders only.
 - Configure preview and production values in Vercel.
 
@@ -832,6 +830,8 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-08-31 | Store one newest submission row per `(user_id, problem_slug)` and remove `solved_count`. | The ingestion MVP needs revision-relevant latest state, not historical accepted-submission events; full history storage is deferred to V2. |
 | 2026-08-31 | Collapse bulk duplicates to the newest timestamp and prevent older or equal submissions from replacing stored state. | Makes imports and retries deterministic while protecting the revision-relevant solve timestamp. |
 | 2026-08-31 | Keep topics, revision, and AI fields out of the initial ingestion table. | Their persistence contracts will be designed alongside their business features. |
+| 2026-09-01 | Expose only ingestion-token metadata columns to authenticated owners; keep `token_hash` privileged. | Token hashes have no UI value and should remain behind the server-only boundary even though they are not raw secrets. |
+| 2026-09-01 | Use a server-only service-role client for token creation and extension verification. | Extension ownership must be derived from a verified token and never from caller-controlled input. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -841,7 +841,7 @@ Add new decisions here rather than relying only on chat history.
 
 **Last updated:** 2026-08-31
 
-**Current milestone:** Day 2 — ingestion persistence foundation implemented locally; remote migration and two-user RLS verification remain.
+**Current milestone:** Ingestion backend Subtask 1 complete locally — token and privileged-access foundation. The new token migration still needs to be pushed to Supabase.
 
 **Repository state:**
 
@@ -858,15 +858,20 @@ Add new decisions here rather than relying only on chat history.
 - The current dependency set is compatible on the documented Node.js 22+ baseline; no existing dependency upgrades were required.
 - The ingestion migration stores one newest submission per user/problem, has no `solved_count`, and prevents older or equal timestamps from overwriting newer state.
 - Owner-only RLS policies and minimal cookie-aware Supabase browser/server clients are implemented.
+- Ingestion tokens use 32 random bytes, an `lr_ingest_` prefix, SHA-256-only persistence, metadata-only owner visibility, revocation checks, and successful-use timestamps.
+- A server-only privileged Supabase client isolates the service-role key; extension verification resolves ownership without accepting a caller-provided user ID.
+- `POST /api/tokens` and `GET /api/extension/verify` implement the web-session and bearer-token authorization boundaries.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
 - AI-note, pattern, revision/hint, PDS, persistence services, APIs, authentication UI, and extension behavior have not been implemented yet.
 
-**Next action:** Create/link a Supabase project, apply the ingestion migration, and verify two-user RLS isolation before designing the timestamp-aware persistence service.
+**Next action:** After primary-engineer approval, implement Subtask 2: the narrowly scoped atomic newest-submission database function, timestamp-aware persistence service, and bearer-authenticated `POST /api/submissions` route.
 
 **Active blockers:** None.
 
 **Known implementation issues:** PowerShell blocks the `npm.ps1` shim on this machine; use `npm.cmd` for project commands.
+
+**Pending deployment action:** Push `20260901100000_create_ingest_tokens.sql` to the linked Supabase project before exercising token APIs against the hosted database.
 
 ---
 
