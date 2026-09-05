@@ -335,8 +335,9 @@ All errors use `{ "error": string }` with an appropriate HTTP status.
   - An equal or older submission returns `200` without modifying stored state.
   - Save must succeed even if AI generation fails.
 - `POST /api/submissions/bulk`: validate and import a batch.
-  - Existing problems are skipped.
-  - Returns inserted, skipped, and failed/invalid information as defined by implementation.
+  - Each item is validated independently; invalid items do not block valid history.
+  - Valid duplicates collapse to the newest `submittedAt`; collapsed older entries count as skipped.
+  - Returns created, updated, skipped, and invalid counts.
 - `GET /api/submissions`: list the signed-in user's saved problems.
 - `GET /api/submissions/:id`: retrieve one problem for the workspace.
 - `POST /api/submissions/:id/notes`: regenerate missing notes; add only if needed for recovery.
@@ -611,9 +612,9 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 
 **Exit condition:** A real LeetCode submission can reach LeetRevise through at least one reliable extension path.
 
-### Day 11 — Bulk import and integration cleanup
+### Day 11 — Bulk import UI and integration cleanup
 
-- [ ] Implement bulk API batching and idempotent skip behavior.
+- [x] Implement partial-valid bulk API behavior, newest-per-problem collapse, and atomic persistence reuse.
 - [ ] Implement the simplest feasible historical-import UI/data source.
 - [ ] If automatic history access is not feasible, provide manual JSON/list import or defer it explicitly.
 - [ ] Fix contract differences uncovered by extension testing.
@@ -833,6 +834,7 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-09-01 | Expose only ingestion-token metadata columns to authenticated owners; keep `token_hash` privileged. | Token hashes have no UI value and should remain behind the server-only boundary even though they are not raw secrets. |
 | 2026-09-01 | Use a server-only service-role client for token creation and extension verification. | Extension ownership must be derived from a verified token and never from caller-controlled input. |
 | 2026-09-05 | Keep the atomic ingestion function limited to insert-if-absent, update-if-newer, and skip-otherwise. | Validation, bearer authentication, and future bulk grouping remain application responsibilities while the database safely resolves write races. |
+| 2026-09-05 | Count older duplicates collapsed inside a bulk payload as skipped. | Ensures created, updated, skipped, and invalid counts account for every submitted history item without persisting duplicate problem states. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -842,7 +844,7 @@ Add new decisions here rather than relying only on chat history.
 
 **Last updated:** 2026-09-05
 
-**Current milestone:** Ingestion backend Subtask 2 complete locally — atomic single-submission persistence and bearer-authenticated API. Pending migrations still need to be pushed to Supabase.
+**Current milestone:** The three-part ingestion backend vertical slice is complete locally. Pending migrations still need to be pushed to Supabase and exercised against the hosted project.
 
 **Repository state:**
 
@@ -864,11 +866,12 @@ Add new decisions here rather than relying only on chat history.
 - `POST /api/tokens` and `GET /api/extension/verify` implement the web-session and bearer-token authorization boundaries.
 - The atomic database function safely returns `created`, `updated`, or `skipped` under concurrent writes without absorbing validation, authentication, or bulk behavior.
 - `POST /api/submissions` validates the existing domain contract, derives ownership from the bearer token, and delegates all persistence to the submission service.
+- `POST /api/submissions/bulk` processes valid entries despite invalid neighbors, collapses duplicates chronologically, reuses the single-submission persistence service, and returns fully accounted aggregate results.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
-- AI-note, pattern, revision/hint, PDS, persistence services, APIs, authentication UI, and extension behavior have not been implemented yet.
+- AI-note, pattern, revision/hint, PDS, authentication UI, and extension behavior have not been implemented yet.
 
-**Next action:** After primary-engineer approval, implement Subtask 3: partial-valid bulk ingestion, duplicate collapse to the newest item per problem, reuse of the single-submission service, and aggregate API results.
+**Next action:** Implement the web authentication and token-setup experience so a user can sign in, create an ingestion token through the existing endpoint, and reach a protected setup/dashboard shell. Keep AI, revision, and extension capture behavior deferred until separately approved.
 
 **Active blockers:** None.
 

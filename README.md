@@ -191,8 +191,25 @@ The endpoint atomically preserves one newest submission per user/problem:
 
 The database function implements only this insert/update/skip invariant. Payload validation and bearer authentication remain in the application layer. Before using this endpoint against hosted Supabase, push all pending migrations with `npx.cmd supabase@latest db push`.
 
+## Bulk-submission API
+
+`POST /api/submissions/bulk` accepts `{ "submissions": [...] }` with the same bearer authentication as single ingestion. Each array item is validated independently, so malformed entries do not prevent valid history entries from being processed.
+
+Valid entries are grouped by `problemSlug`; only the chronologically newest `submittedAt` in each group reaches the single-submission persistence service. Older in-payload duplicates count as skipped. The response accounts for every input item:
+
+```json
+{
+  "created": 12,
+  "updated": 3,
+  "skipped": 4,
+  "invalid": 2
+}
+```
+
+No domain-level history-size limit is imposed. Transport chunking may be introduced later without changing these semantics.
+
 ## Current boundaries
 
-The implemented domain layer validates LeetCode difficulty and single/bulk ingestion data. The database foundation and single-submission API store one newest submission per user/problem and reject stale overwrites. It intentionally does not yet contain bulk API behavior, AI notes, pattern classification, revision attempts, hints, PDS calculations, or extension behavior. Those contracts will be introduced alongside the business features that need them.
+The implemented ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. It intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, login/setup UI, or extension behavior. Those contracts will be introduced alongside the business features that need them.
 
 Gemini and all AI functionality are deferred. They are not dependencies of the ingestion MVP, and no Gemini credentials are currently required to develop or verify the implemented scaffold and ingestion contracts.
