@@ -527,8 +527,9 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 - [x] Create the `user_submissions` migration for one newest submission per user/problem.
 - [x] Add ingestion constraints, latest-timestamp protection, indexes, and owner-only RLS policies.
 - [x] Implement minimal Supabase server/browser clients without introducing authentication UI.
+- [x] Implement separate magic-link signup/login, PKCE callback handling, refreshed cookie sessions, sign-out, and protected routing.
 - [ ] Apply the migration to a Supabase project and test two-user data isolation.
-- [ ] Design authentication and ingestion-token persistence as separate approved slices.
+- [x] Design and implement authentication and ingestion-token persistence as separate approved slices.
 
 **Exit condition:** The migration is applied to Supabase, owner isolation is verified, and the application has minimal browser/server database clients.
 
@@ -538,7 +539,7 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 - [x] Implement `POST /api/submissions`.
 - [x] Implement atomic insert/newer-update/stale-skip behavior.
 - [x] Add focused API/service tests.
-- [ ] Add settings/setup UI for copying a generated token.
+- [ ] Add settings/setup UI for copying a generated token. Deferred until after higher-priority core features by primary-engineer decision.
 
 **Exit condition:** An authenticated test request stores a submission.
 
@@ -835,6 +836,8 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-09-01 | Use a server-only service-role client for token creation and extension verification. | Extension ownership must be derived from a verified token and never from caller-controlled input. |
 | 2026-09-05 | Keep the atomic ingestion function limited to insert-if-absent, update-if-newer, and skip-otherwise. | Validation, bearer authentication, and future bulk grouping remain application responsibilities while the database safely resolves write races. |
 | 2026-09-05 | Count older duplicates collapsed inside a bulk payload as skipped. | Ensures created, updated, skipped, and invalid counts account for every submitted history item without persisting duplicate problem states. |
+| 2026-09-12 | Implement separate passwordless signup and login pages, with login forbidden from implicitly creating accounts. | Establishes the core authentication backbone while keeping both user journeys explicit. |
+| 2026-09-12 | Defer token-management UI and broader authorization work until after higher-priority core features. | Keeps the current slice focused and avoids premature settings infrastructure. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -842,9 +845,9 @@ Add new decisions here rather than relying only on chat history.
 
 ## 20. Current Status
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-12
 
-**Current milestone:** The three-part ingestion backend vertical slice is complete locally. Pending migrations still need to be pushed to Supabase and exercised against the hosted project.
+**Current milestone:** Core web authentication is implemented: separate signup/login pages, PKCE callback, refreshed cookie sessions, protected placeholder dashboard, and sign-out.
 
 **Repository state:**
 
@@ -867,11 +870,14 @@ Add new decisions here rather than relying only on chat history.
 - The atomic database function safely returns `created`, `updated`, or `skipped` under concurrent writes without absorbing validation, authentication, or bulk behavior.
 - `POST /api/submissions` validates the existing domain contract, derives ownership from the bearer token, and delegates all persistence to the submission service.
 - `POST /api/submissions/bulk` processes valid entries despite invalid neighbors, collapses duplicates chronologically, reuses the single-submission persistence service, and returns fully accounted aggregate results.
+- Supabase magic-link signup can create accounts, login is restricted to existing accounts, and successful callbacks establish cookie-backed sessions before redirecting to the protected placeholder dashboard.
+- Next.js proxy refreshes sessions while protected pages independently validate signed claims; unsafe callback destinations are rejected.
+- Token-management UI remains intentionally deferred.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
-- AI-note, pattern, revision/hint, PDS, authentication UI, and extension behavior have not been implemented yet.
+- AI-note, pattern, revision/hint, PDS, token-management UI, and extension behavior have not been implemented yet.
 
-**Next action:** Implement the web authentication and token-setup experience so a user can sign in, create an ingestion token through the existing endpoint, and reach a protected setup/dashboard shell. Keep AI, revision, and extension capture behavior deferred until separately approved.
+**Next action:** Scope the Chrome MV3 ingestion client and reliable manual-capture path so a real LeetCode submission can reach the completed backend. Token-management UI remains deferred and development provisioning may be handled separately.
 
 **Active blockers:** None.
 

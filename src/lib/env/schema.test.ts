@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseAuthEnvironment,
   parseEnvironment,
   parsePrivilegedSupabaseEnvironment,
   parsePublicSupabaseEnvironment,
@@ -68,6 +69,24 @@ describe("parsePrivilegedSupabaseEnvironment", () => {
     ).toEqual({
       NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY: validEnvironment.SUPABASE_SERVICE_ROLE_KEY,
+    });
+  });
+});
+
+describe("parseAuthEnvironment", () => {
+  it("requires only public Supabase configuration and the application URL", () => {
+    expect(
+      parseAuthEnvironment({
+        NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY:
+          validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        NEXT_PUBLIC_APP_URL: validEnvironment.NEXT_PUBLIC_APP_URL,
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: validEnvironment.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        validEnvironment.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_APP_URL: validEnvironment.NEXT_PUBLIC_APP_URL,
     });
   });
 });

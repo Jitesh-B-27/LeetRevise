@@ -83,6 +83,25 @@ The production build can be served locally after building:
 npm.cmd start
 ```
 
+## Authentication
+
+LeetRevise uses Supabase passwordless email authentication with PKCE-backed, cookie-based sessions.
+
+- `/signup` sends a magic link and allows Supabase to create a new user.
+- `/login` sends a magic link only for an existing user.
+- `/auth/callback` exchanges the returned authorization code for a session.
+- `/dashboard` validates the signed token claims and redirects unauthenticated visitors to `/login`.
+- Signing out clears the Supabase session and returns to `/login`.
+
+In the Supabase dashboard, configure **Authentication → URL Configuration** with:
+
+```text
+Site URL: http://localhost:3000
+Redirect URL: http://localhost:3000/auth/callback
+```
+
+Add the corresponding production callback URL before deployment. `NEXT_PUBLIC_APP_URL` must match the application origin used in the configured redirect URL. Keep the default magic-link email template using Supabase's confirmation URL unless the authentication flow is deliberately changed.
+
 ## Repository structure
 
 ```text
@@ -210,6 +229,6 @@ No domain-level history-size limit is imposed. Transport chunking may be introdu
 
 ## Current boundaries
 
-The implemented ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. It intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, login/setup UI, or extension behavior. Those contracts will be introduced alongside the business features that need them.
+The application now has separate signup and login pages, cookie-based Supabase sessions, a protected placeholder dashboard, and sign-out. The ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. It intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, token-management UI, or extension behavior. Those contracts will be introduced alongside the business features that need them.
 
 Gemini and all AI functionality are deferred. They are not dependencies of the ingestion MVP, and no Gemini credentials are currently required to develop or verify the implemented scaffold and ingestion contracts.
