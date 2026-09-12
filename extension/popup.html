@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeetRevise</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">LEETREVISE</p>
+        <h1>Save an accepted solution</h1>
+        <p>Review the captured data before sending it to your revision library.</p>
+      </header>
+
+      <details id="setup-panel" open>
+        <summary>Connection</summary>
+        <form id="setup-form">
+          <label>Backend URL <input id="backend-url" type="url" required /></label>
+          <label>Ingestion token <input id="token" type="password" autocomplete="off" /></label>
+          <button type="submit">Save and verify</button>
+          <p id="connection-status" class="status" role="status"></p>
+        </form>
+      </details>
+
+      <section>
+        <div class="section-heading">
+          <h2>Submission</h2>
+          <button id="extract" type="button" class="secondary">Read current page</button>
+        </div>
+        <form id="submission-form">
+          <div class="row">
+            <label>Problem slug <input id="problem-slug" required /></label>
+            <label>Difficulty
+              <select id="difficulty" required>
+                <option value="">Select</option>
+                <option>Easy</option>
+                <option>Medium</option>
+                <option>Hard</option>
+              </select>
+            </label>
+          </div>
+          <label>Title <input id="title" required /></label>
+          <label>Problem URL <input id="problem-url" type="url" required /></label>
+          <label>Description <textarea id="problem-description" rows="4" required></textarea></label>
+          <div class="row">
+            <label>Language <input id="language" required /></label>
+            <label>Submitted at <input id="submitted-at" type="datetime-local" step="1" required /></label>
+          </div>
+          <label>Accepted code <textarea id="code" rows="8" required spellcheck="false"></textarea></label>
+          <div class="row">
+            <label>Runtime (ms) <input id="runtime-ms" type="number" min="0" step="1" /></label>
+            <label>Memory (MB) <input id="memory-mb" type="number" min="0" step="any" /></label>
+          </div>
+          <button type="submit">Save to LeetRevise</button>
+          <p id="submission-status" class="status" role="status"></p>
+        </form>
+      </section>
+    </main>
+    <script src="src/leetcode.js"></script>
+    <script src="src/popup.js"></script>
+  </body>
+</html>

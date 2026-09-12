@@ -595,21 +595,22 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 
 ### Day 9 — Extension foundation and feasibility spike
 
-- [ ] Scaffold MV3 extension.
-- [ ] Build popup settings and connection verification.
-- [ ] Implement content/page/background communication.
-- [ ] Investigate accepted-submission detection against current LeetCode.
-- [ ] Decide and record the final capture method before ending the day.
+- [x] Scaffold a dependency-free MV3 extension.
+- [x] Build popup settings and connection verification.
+- [x] Implement content/page/background communication.
+- [x] Implement a timeboxed accepted-submission observer around current submit/check traffic.
+- [x] Select a review-before-save workflow with manual page capture as the reliable V1 fallback.
 
 **Exit condition:** Unpacked extension connects to the local or preview backend and capture strategy is proven or manual fallback selected.
 
 ### Day 10 — Extension capture
 
-- [ ] Implement the selected automatic capture method.
-- [ ] Implement manual save fallback regardless of automatic success.
-- [ ] Extract available metadata and normalize the payload.
-- [ ] Add created, updated, skipped, and error feedback.
-- [ ] Test with mocked fixtures and one real problem.
+- [x] Implement best-effort automatic accepted-submission draft capture.
+- [x] Implement manual save fallback regardless of automatic success.
+- [x] Extract available metadata and normalize the payload.
+- [x] Add created, updated, skipped, and retryable error feedback.
+- [x] Test extraction and contract normalization with mocked fixtures.
+- [ ] Verify the unpacked extension with one real problem after hosted migrations and a development ingestion token are available.
 
 **Exit condition:** A real LeetCode submission can reach LeetRevise through at least one reliable extension path.
 
@@ -838,6 +839,8 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-09-05 | Count older duplicates collapsed inside a bulk payload as skipped. | Ensures created, updated, skipped, and invalid counts account for every submitted history item without persisting duplicate problem states. |
 | 2026-09-12 | Implement separate passwordless signup and login pages, with login forbidden from implicitly creating accounts. | Establishes the core authentication backbone while keeping both user journeys explicit. |
 | 2026-09-12 | Defer token-management UI and broader authorization work until after higher-priority core features. | Keeps the current slice focused and avoids premature settings infrastructure. |
+| 2026-09-13 | Keep the MV3 extension dependency-free and request backend host access only for the configured origin. | Avoids repository/tooling weight and permanent broad host permissions while supporting local and deployed backends. |
+| 2026-09-13 | Automatic accepted-submission detection creates a reviewable draft; manual page capture remains the supported V1 fallback. | LeetCode request and DOM internals are private and changeable, so user review protects data quality without blocking the real ingestion path. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -845,9 +848,9 @@ Add new decisions here rather than relying only on chat history.
 
 ## 20. Current Status
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-13
 
-**Current milestone:** Core web authentication is implemented: separate signup/login pages, PKCE callback, refreshed cookie sessions, protected placeholder dashboard, and sign-out.
+**Current milestone:** The LeetCode ingestion vertical slice is implemented from MV3 page capture through the existing authenticated submission API. A real-browser/hosted-database smoke test remains pending.
 
 **Repository state:**
 
@@ -873,13 +876,16 @@ Add new decisions here rather than relying only on chat history.
 - Supabase magic-link signup can create accounts, login is restricted to existing accounts, and successful callbacks establish cookie-backed sessions before redirecting to the protected placeholder dashboard.
 - Next.js proxy refreshes sessions while protected pages independently validate signed claims; unsafe callback destinations are rejected.
 - Token-management UI remains intentionally deferred.
+- The dependency-free MV3 extension stores its bearer token only in trusted extension storage, requests access only to the configured backend origin, and never accepts or sends a user ID.
+- Best-effort submit/check observation records accepted-submission data as a pending draft; the popup also supports explicit page extraction and requires review before ingestion.
+- Extension parsing and manifest tests cover backend URL restrictions, LeetCode metadata, accepted-result measurements, exact payload construction, and the narrow permanent permission boundary.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
-- AI-note, pattern, revision/hint, PDS, token-management UI, and extension behavior have not been implemented yet.
+- AI-note, pattern, revision/hint, PDS, token-management UI, and historical-import UI behavior have not been implemented yet.
 
-**Next action:** Scope the Chrome MV3 ingestion client and reliable manual-capture path so a real LeetCode submission can reach the completed backend. Token-management UI remains deferred and development provisioning may be handled separately.
+**Next action:** Push pending Supabase migrations, provision a development ingestion token, and run one real unpacked-extension capture against LeetCode. After that integration checkpoint, scope the next product feature without assuming the earlier Day 2 revision schema.
 
-**Active blockers:** None.
+**Active blockers:** Real extension verification requires a running configured backend, an ingestion token, Chrome loading the unpacked extension, and a LeetCode submission performed by the developer.
 
 **Known implementation issues:** PowerShell blocks the `npm.ps1` shim on this machine; use `npm.cmd` for project commands.
 

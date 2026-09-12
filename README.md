@@ -1,6 +1,6 @@
 # LeetRevise
 
-LeetRevise is a personal learning tool for capturing accepted LeetCode submissions and, over time, turning them into focused revision practice. The project is currently in its foundation stage: the Next.js application, test tooling, environment validation, and pure LeetCode ingestion contracts are in place. Database, authentication, API, extension, revision, and AI behavior have not been implemented yet.
+LeetRevise is a personal learning tool for capturing accepted LeetCode submissions and, over time, turning them into focused revision practice. The current vertical slice includes Supabase authentication, token-authenticated single and bulk ingestion APIs, newest-submission persistence, and an unpacked Chrome extension for reviewing and sending LeetCode submissions. Revision and AI behavior remain deferred.
 
 For the implementation sequence and scope decisions, see [`plan.md`](./plan.md). For the longer-term system design, see [`architecture.md`](./architecture.md). The plan takes precedence where the two differ.
 
@@ -116,7 +116,7 @@ src/
   test/             Shared test setup
 ```
 
-Future database migrations and Chrome extension code will live under `supabase/` and `extension/` respectively when those scopes are approved.
+`supabase/` contains database migrations. `extension/` is a dependency-free Manifest V3 extension that can be loaded directly into Chrome without a separate build step.
 
 ## Create and migrate a Supabase database
 
@@ -227,8 +227,39 @@ Valid entries are grouped by `problemSlug`; only the chronologically newest `sub
 
 No domain-level history-size limit is imposed. Transport chunking may be introduced later without changing these semantics.
 
+## Chrome extension
+
+The extension provides the first real ingestion path from a LeetCode page to the existing API. It uses no extension framework or additional runtime dependencies.
+
+### Load it for local development
+
+1. Start the web application with `npm.cmd run dev`.
+2. Obtain an `lr_ingest_...` token from `POST /api/tokens`. The settings/token-management UI is still deferred, so development provisioning currently uses the implemented authenticated API directly. After signing in locally, the following can be run once in that application's browser console; copy the returned token because the raw value is shown only in this response:
+
+   ```js
+   fetch("/api/tokens", { method: "POST" }).then((response) => response.json()).then(console.log)
+   ```
+3. Open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**.
+4. Select the repository's `extension` directory.
+5. Pin LeetRevise, open its popup, enter `http://localhost:3000` and the ingestion token, then choose **Save and verify**.
+
+Chrome asks for access only to the configured backend origin. Permanent host access is limited to LeetCode. Production backends must use HTTPS; plain HTTP is accepted only for `localhost` or `127.0.0.1` development.
+
+### Capture a submission
+
+Open a LeetCode problem page and use either path:
+
+- After an accepted submission, the page observer attempts to recognize LeetCode's submit/check traffic. It records the submit time, code, language, runtime, and memory when available, saves a pending draft, and displays a badge on the extension.
+- Open the popup and choose **Read current page** for the reliable manual fallback. The extension reads stable page metadata where available and leaves uncertain fields editable.
+
+Review every required field, especially **Submitted at**, before choosing **Save to LeetRevise**. The timestamp represents the real LeetCode submission time; the extension does not replace a missing value with the current time during manual capture. Successful responses display `created`, `updated`, or `skipped`, using the existing backend semantics. A failed request leaves the form intact so it can be retried.
+
+The extension never sends a `user_id`. Its service worker adds the stored bearer token, and the backend derives ownership from that verified credential. The raw token is kept in `chrome.storage.local` with access restricted to trusted extension pages and the service worker; LeetCode content scripts cannot read it.
+
+Automatic capture is best-effort because LeetCode's private request and DOM structure can change. The reviewable manual path is the supported V1 fallback. Historical bulk-import UI is not part of this slice.
+
 ## Current boundaries
 
-The application now has separate signup and login pages, cookie-based Supabase sessions, a protected placeholder dashboard, and sign-out. The ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. It intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, token-management UI, or extension behavior. Those contracts will be introduced alongside the business features that need them.
+The application now has separate signup and login pages, cookie-based Supabase sessions, a protected placeholder dashboard, and sign-out. The ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. The Chrome MV3 extension can verify an ingestion token, assemble a reviewable LeetCode submission, and send it through the single-submission API. The project intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, token-management UI, or historical-import UI. Those contracts will be introduced alongside the business features that need them.
 
 Gemini and all AI functionality are deferred. They are not dependencies of the ingestion MVP, and no Gemini credentials are currently required to develop or verify the implemented scaffold and ingestion contracts.
