@@ -86,9 +86,16 @@
   }
 
   function normalizeTimestamp(value) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      const milliseconds = value < 10_000_000_000 ? value * 1000 : value;
-      return new Date(milliseconds).toISOString();
+    const numericValue =
+      typeof value === "number"
+        ? value
+        : typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim())
+          ? Number(value.trim())
+          : undefined;
+    if (numericValue != null && Number.isFinite(numericValue)) {
+      const milliseconds = numericValue < 10_000_000_000 ? numericValue * 1000 : numericValue;
+      const date = new Date(milliseconds);
+      return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
     }
 
     const text = nonEmptyString(value);

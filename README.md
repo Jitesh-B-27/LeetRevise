@@ -256,10 +256,26 @@ Review every required field, especially **Submitted at**, before choosing **Save
 
 The extension never sends a `user_id`. Its service worker adds the stored bearer token, and the backend derives ownership from that verified credential. The raw token is kept in `chrome.storage.local` with access restricted to trusted extension pages and the service worker; LeetCode content scripts cannot read it.
 
-Automatic capture is best-effort because LeetCode's private request and DOM structure can change. The reviewable manual path is the supported V1 fallback. Historical bulk-import UI is not part of this slice.
+Automatic single capture is best-effort because LeetCode's private request and DOM structure can change. The reviewable manual path remains the supported V1 fallback.
+
+### Import accepted history
+
+Bulk history import is always user-triggered; installation, signup, and token verification never start it automatically.
+
+1. Sign in to the intended account on `leetcode.com` and keep a LeetCode tab active.
+2. Open the extension and choose **Link current account**. The detected username is stored locally; no LeetCode password or session cookie is copied.
+3. Choose **Scan accepted history**. Using the same CSRF-authenticated LeetCode GraphQL channel as account detection, the extension enumerates solved problems, paginates their submissions, ignores non-accepted results, keeps the newest accepted submission per problem, and retrieves the required code and problem metadata with limited concurrency.
+4. Review the scanned, unique, ready, and unavailable counts.
+5. Choose **Import problems** to send ready submissions through `POST /api/submissions/bulk` in transport chunks of 25.
+
+The scan is blocked if the active LeetCode username differs from the linked username. Choose **Link current account** again only when intentionally switching accounts.
+
+Bulk upload progress and completed chunk counts are stored in trusted extension storage. If a request fails, **Retry remaining** continues from the first unfinished chunk. Re-running a complete scan/import is also safe: the backend and database skip equal or older submissions and update only strictly newer ones. There is no domain-level history limit.
+
+The final summary separates collection-time unavailable items from backend `created`, `updated`, `skipped`, and `invalid` counts. LeetCode does not provide a documented stable complete-history export API, so the page-context history adapter may need maintenance when LeetCode changes its private response formats.
 
 ## Current boundaries
 
-The application now has separate signup and login pages, cookie-based Supabase sessions, a protected placeholder dashboard, and sign-out. The ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. The Chrome MV3 extension can verify an ingestion token, assemble a reviewable LeetCode submission, and send it through the single-submission API. The project intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, token-management UI, or historical-import UI. Those contracts will be introduced alongside the business features that need them.
+The application now has separate signup and login pages, cookie-based Supabase sessions, a protected placeholder dashboard, and sign-out. The ingestion backend validates and persists single submissions and partial-valid bulk history while storing one newest submission per user/problem. The Chrome MV3 extension can verify an ingestion token, assemble a reviewable single submission, link the intended active LeetCode account, scan accepted history, and send retryable bulk chunks. The project intentionally does not yet contain AI notes, pattern classification, revision attempts, hints, PDS calculations, token-management UI, or a website library. Those contracts will be introduced alongside the business features that need them.
 
 Gemini and all AI functionality are deferred. They are not dependencies of the ingestion MVP, and no Gemini credentials are currently required to develop or verify the implemented scaffold and ingestion contracts.

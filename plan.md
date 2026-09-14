@@ -617,10 +617,11 @@ The order is vertical-slice oriented: establish one end-to-end path early, then 
 ### Day 11 — Bulk import UI and integration cleanup
 
 - [x] Implement partial-valid bulk API behavior, newest-per-problem collapse, and atomic persistence reuse.
-- [ ] Implement the simplest feasible historical-import UI/data source.
-- [ ] If automatic history access is not feasible, provide manual JSON/list import or defer it explicitly.
-- [ ] Fix contract differences uncovered by extension testing.
-- [ ] Improve retry behavior for network failures.
+- [x] Implement explicit LeetCode account linking and a user-triggered historical-import UI/data source.
+- [x] Paginate accessible history, keep the newest accepted submission per problem, and retrieve required detail data with bounded concurrency.
+- [x] Reuse the existing bulk contract and endpoint through transport chunks without a domain-level history limit.
+- [x] Preserve completed chunk progress and retry only unfinished uploads after network failures.
+- [ ] Verify the adapter against a real multi-problem LeetCode history and repeat the import to confirm idempotent skips.
 
 **Exit condition:** Core ingestion is stable; a practical backfill path exists without blocking release.
 
@@ -841,6 +842,9 @@ Chrome Web Store publication, automatic capture perfection, and optional histori
 | 2026-09-12 | Defer token-management UI and broader authorization work until after higher-priority core features. | Keeps the current slice focused and avoids premature settings infrastructure. |
 | 2026-09-13 | Keep the MV3 extension dependency-free and request backend host access only for the configured origin. | Avoids repository/tooling weight and permanent broad host permissions while supporting local and deployed backends. |
 | 2026-09-13 | Automatic accepted-submission detection creates a reviewable draft; manual page capture remains the supported V1 fallback. | LeetCode request and DOM internals are private and changeable, so user review protects data quality without blocking the real ingestion path. |
+| 2026-09-13 | Keep bulk history collection in the extension, require explicit linking to the active LeetCode username, and trigger scan/upload only through user actions. | The website cannot use the user's LeetCode session safely, and account confirmation prevents accidental import from a different active account. |
+| 2026-09-13 | Allow repeated full-history imports while checkpointing transport chunks for retry. | Existing newest-per-problem and stale-write rules make reimport idempotent, avoiding a separate one-time-import state model. |
+| 2026-09-13 | Discover bulk history through CSRF-authenticated LeetCode GraphQL queries instead of the legacy `/api/submissions/` endpoint. | The legacy history endpoint returned `403` despite a valid active session, while the GraphQL session path already supports account detection and provides solved-problem, submission-list, and detail data. |
 
 Add new decisions here rather than relying only on chat history.
 
@@ -850,7 +854,7 @@ Add new decisions here rather than relying only on chat history.
 
 **Last updated:** 2026-09-13
 
-**Current milestone:** The LeetCode ingestion vertical slice is implemented from MV3 page capture through the existing authenticated submission API. A real-browser/hosted-database smoke test remains pending.
+**Current milestone:** Single and bulk LeetCode ingestion are implemented from the MV3 extension through the authenticated APIs and newest-submission database rule. Real multi-problem history verification remains pending.
 
 **Repository state:**
 
@@ -879,13 +883,15 @@ Add new decisions here rather than relying only on chat history.
 - The dependency-free MV3 extension stores its bearer token only in trusted extension storage, requests access only to the configured backend origin, and never accepts or sends a user ID.
 - Best-effort submit/check observation records accepted-submission data as a pending draft; the popup also supports explicit page extraction and requires review before ingestion.
 - Extension parsing and manifest tests cover backend URL restrictions, LeetCode metadata, accepted-result measurements, exact payload construction, and the narrow permanent permission boundary.
+- Bulk history import explicitly links the active LeetCode username, blocks account mismatches, scans only after a user action, filters to the newest accepted submission per problem, and presents a summary before upload.
+- Ready history is uploaded through the existing bulk endpoint in checkpointed chunks of 25; interrupted uploads resume at the first unfinished chunk and complete reimports remain idempotent.
 - README instructions cover hosted Supabase project creation, CLI linking, migration preview, deployment, and verification.
 - `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass at the latest relevant checkpoints.
-- AI-note, pattern, revision/hint, PDS, token-management UI, and historical-import UI behavior have not been implemented yet.
+- AI-note, pattern, revision/hint, PDS, token-management UI, and website library behavior have not been implemented yet.
 
-**Next action:** Push pending Supabase migrations, provision a development ingestion token, and run one real unpacked-extension capture against LeetCode. After that integration checkpoint, scope the next product feature without assuming the earlier Day 2 revision schema.
+**Next action:** Reload the unpacked extension and run a real multi-problem history scan/import, then repeat it to confirm idempotent skips. After that integration checkpoint, scope the next product feature without assuming undefined AI or revision contracts.
 
-**Active blockers:** Real extension verification requires a running configured backend, an ingestion token, Chrome loading the unpacked extension, and a LeetCode submission performed by the developer.
+**Active blockers:** Real bulk-adapter verification requires Chrome with the updated unpacked extension and an authenticated LeetCode account containing multiple accepted problems.
 
 **Known implementation issues:** PowerShell blocks the `npm.ps1` shim on this machine; use `npm.cmd` for project commands.
 

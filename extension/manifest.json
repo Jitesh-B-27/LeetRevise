@@ -4,7 +4,7 @@
   "description": "Capture accepted LeetCode submissions for later revision.",
   "version": "0.1.0",
   "minimum_chrome_version": "102",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "unlimitedStorage"],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://*.leetcode.com/*"
@@ -20,7 +20,7 @@
   "content_scripts": [
     {
       "matches": ["https://leetcode.com/*", "https://*.leetcode.com/*"],
-      "js": ["src/leetcode.js", "src/page-observer.js"],
+      "js": ["src/leetcode.js", "src/history.js", "src/page-observer.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
