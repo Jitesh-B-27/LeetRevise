@@ -1,6 +1,6 @@
 # LeetRevise
 
-LeetRevise is a personal learning tool for capturing accepted LeetCode submissions and, over time, turning them into focused revision practice. The current vertical slice includes Supabase authentication, token-authenticated single and bulk ingestion APIs, newest-submission persistence, and an unpacked Chrome extension for reviewing and sending LeetCode submissions. Revision and AI behavior remain deferred.
+LeetRevise is a personal learning tool for capturing accepted LeetCode submissions and, over time, turning them into focused revision practice. The current vertical slice includes Supabase authentication, token-authenticated single and bulk ingestion APIs, newest-submission persistence, an unpacked Chrome extension, and an authenticated library for browsing the resulting data. Revision and AI behavior remain deferred.
 
 For the implementation sequence and scope decisions, see [`plan.md`](./plan.md). For the longer-term system design, see [`architecture.md`](./architecture.md). The plan takes precedence where the two differ.
 
@@ -91,6 +91,8 @@ LeetRevise uses Supabase passwordless email authentication with PKCE-backed, coo
 - `/login` sends a magic link only for an existing user.
 - `/auth/callback` exchanges the returned authorization code for a session.
 - `/dashboard` validates the signed token claims and redirects unauthenticated visitors to `/login`.
+- `/library` reads the latest owned submission rows directly from Supabase whenever the route loads.
+- `/library/[submissionId]` displays owned problem context and the latest accepted code.
 - Signing out clears the Supabase session and returns to `/login`.
 
 In the Supabase dashboard, configure **Authentication → URL Configuration** with:
